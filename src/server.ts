@@ -6,11 +6,12 @@ import config from "./config";
 import router from "./routes";
 
 const app = express();
-app.use(cookieParser());
+app.use(express.json());
+app.use(cookieParser(""));
 app.use(cors());
 app.use(router);
 
-connect(config.moongose_url);
+connect(config.uri, config.options);
 const db = connection;
 db.on("error", (error) => console.error(error));
 db.once("open", () => console.log("Connected to MongoDB"));
