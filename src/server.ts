@@ -1,4 +1,5 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
+import "express-async-errors";
 import cookieParser from "cookie-parser";
 import { connect, connection } from "mongoose";
 import cors from "cors";
@@ -10,6 +11,12 @@ app.use(express.json());
 app.use(cookieParser(""));
 app.use(cors());
 app.use(router);
+app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
+  return res.json({
+    message: error.message,
+    status: "Error",
+  });
+});
 
 connect(config.uri, config.options);
 const db = connection;

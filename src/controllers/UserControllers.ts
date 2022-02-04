@@ -1,6 +1,6 @@
 import * as dotenv from "dotenv";
-import { Request, Response } from "express";
-import * as jwt from "jsonwebtoken";
+import { Request, Response, NextFunction } from "express";
+import jwt, { Secret } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import User from "../model";
 import { createAccessToken, createRefreshToken } from "../auth/authToken";
@@ -8,7 +8,7 @@ import { createAccessToken, createRefreshToken } from "../auth/authToken";
 dotenv.config();
 
 export default {
-  signUp: async (req: Request, res: Response) => {
+  signUp: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { name, email, password, role, contactNumber, profilePicture } =
         req.body;
@@ -43,7 +43,11 @@ export default {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
       });
 
-      res.json({ newUser, accesstoken });
+      res.json({
+        user: newUser,
+        msg: "User created successfully.",
+        accesstoken,
+      });
 
       return res.status(201).json({ msg: "User created successfully." });
     } catch (error) {
@@ -70,7 +74,15 @@ export default {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
       });
 
-      res.json({ accesstoken });
+      res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        contactNumber: user.contactNumber,
+        profilePicture: user.profilePicture,
+        accesstoken,
+      });
     } catch (err) {
       return res.status(500).json({ err: "Error refresh token" });
     }
@@ -85,19 +97,22 @@ export default {
     }
   },
 
-  refreshToken: async (req: Request, res: Response) => {
+  refreshToken: async (req: Request, res: Response, next: NextFunction) => {
+    const refreshtoken = req.cookies.refreshtoken;
+
+    if (!refreshtoken) return res.status(401).json({ msg: "No refresh token" });
+
+    let payload: any = null;
     try {
-      const refreshtoken = req.cookies.refreshtoken;
-      if (!refreshtoken) return res.json({ msg: "No refresh token" });
+      payload = jwt.verify(
+        refreshtoken,
+        process.env.REFRESH_TOKEN_SECRET as Secret
+      );
 
-      const { id } = jwt.verify(refreshtoken, process.env.REFRESH_TOKEN_SECRET);
-      const user = await User.findById(id);
-      if (!user) return res.json({ msg: "No user" });
-
-      const accesstoken = createAccessToken({ id: user._id });
-      res.json({ accesstoken });
+      res.status(200).json({ msg: "Refresh válido" });
+      return next();
     } catch (err) {
-      return res.status(500).json({ err: "Error refresh token" });
+      return res.status(401).json({ msg: "Invalid refresh token" });
     }
   },
 
@@ -111,9 +126,10 @@ export default {
   },
 
   getUser: async (req: Request, res: Response) => {
+    const { _id } = req.params;
     try {
-      const user = await User.findById(req.body.user._id).select("-password");
-      return res.json(user);
+      const user = await User.findById(_id);
+      return res.json({ user });
     } catch (err) {
       return res.status(500).json("Error get user");
     }

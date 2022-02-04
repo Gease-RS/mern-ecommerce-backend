@@ -19,3 +19,7 @@ npm install bcrypt
 ```Bash
 npm install -D ts-node-dev
 ```
+
+```Bash
+npm install express-async-errors
+```
