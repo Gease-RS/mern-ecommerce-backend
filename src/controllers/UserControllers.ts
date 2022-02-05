@@ -1,5 +1,6 @@
 import * as dotenv from "dotenv";
 import { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 import jwt, { Secret } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import User from "../model";
@@ -13,43 +14,47 @@ export default {
       const { name, email, password, role, contactNumber, profilePicture } =
         req.body;
 
-      const user = await User.findOne({ email });
-      if (user)
-        return res.status(400).json({ msg: "The email already exists." });
+      const userExists = await User.findOne({ email });
 
-      if (password.length < 6)
-        return res
-          .status(400)
-          .json({ msg: "Password is at least 6 characters long." });
+      if (userExists) {
+        return res.status(400).json({
+          message: "User already exists",
+        });
+      }
 
-      const passwordHash = await bcrypt.hash(password, 10);
-      const newUser = new User({
-        name,
-        email,
-        password: passwordHash,
-        role: role || "user" || "admin",
-        contactNumber,
-        profilePicture,
-      });
+      if (password.length < 6) {
+        return res.status(400).json({
+          message: "Password must be at least 6 characters",
+        });
+      } else {
+        const passwordHash = await bcrypt.hash(password, 10);
 
-      await newUser.save();
+        const user = new User({
+          _id: new mongoose.Types.ObjectId(),
+          name,
+          email,
+          password: passwordHash,
+          role: role || "user" || "admin",
+          contactNumber,
+          profilePicture,
+        });
 
-      const accesstoken = createAccessToken({ id: newUser._id });
-      const refreshtoken = createRefreshToken({ id: newUser._id });
+        await user.save();
+        const accessToken = createAccessToken({ _id: user._id });
+        const refreshToken = createRefreshToken({ _id: user._id });
 
-      res.cookie("refreshtoken", refreshtoken, {
-        httpOnly: true,
-        path: "/user/refresh_token",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
-      });
+        res.cookie("refreshToken", refreshToken, {
+          httpOnly: true,
+          path: "user/refresh_token",
+          maxAge: 1000 * 60 * 60 * 24 * 7, // 7d
+        });
 
-      res.json({
-        user: newUser,
-        msg: "User created successfully.",
-        accesstoken,
-      });
-
-      return res.status(201).json({ msg: "User created successfully." });
+        res.json({
+          user,
+          accessToken,
+        });
+        return res.status(201).json({ msg: "User created successfully." });
+      }
     } catch (error) {
       return res.status(500).json({ err: "Something went wrong." });
     }
