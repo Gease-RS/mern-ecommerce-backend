@@ -5,8 +5,8 @@ const router: Router = Router();
 
 router.post("/user", UserControllers.signUp);
 router.post("/singin", UserControllers.signIn);
-router.get("/user/refresh_token", UserControllers.logout);
-router.get("/user/refresh_token/:id", UserControllers.refreshToken);
+router.get("/user/refresh_token-out", UserControllers.logout);
+router.get("/user/refresh_token", UserControllers.refreshToken);
 router.get("/users", UserControllers.listUsers);
 router.get("/user/:_id", UserControllers.getUser);
 router.put("/user/:_id", UserControllers.updateUser);

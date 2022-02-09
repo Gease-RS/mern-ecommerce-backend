@@ -12,10 +12,7 @@ dotenv.config();
 let refreshTokens: string[] = [];
 
 export default {
-  signUp: async (
-    req: Request,
-    res: Response
-  ): Promise<e.Response<any, Record<string, any>>> => {
+  signUp: async (req: Request, res: Response) => {
     try {
       const { name, email, password, role, contactNumber, profilePicture } =
         req.body;
@@ -44,30 +41,23 @@ export default {
         profilePicture,
       });
 
+      const salt = await bcrypt.genSalt(10);
+      user.password = await bcrypt.hash(password, salt);
+
       user.save().then((result) => {
-        const token = jwt.sign(
-          { _id: result._id, name: result.name, role: result.role },
-          process.env.ACCESS_TOKEN_SECRET!,
-          {
-            expiresIn: "15m",
-          }
-        );
-        const refreshToken = jwt.sign(
-          { _id: result._id, name: result.name, role: result.role },
-          process.env.REFRESH_TOKEN_SECRET!
-        );
-
+        const accessToken = createAccessToken({ id: user._id });
+        const refreshToken = createRefreshToken({ id: user._id });
         refreshTokens.push(refreshToken);
-
-        return res.status(201).json({
-          user: result,
-          token,
-          refresh: refreshToken,
+        return res.status(200).json({
+          message: "User created successfully",
+          accessToken,
+          refreshToken,
         });
       });
-      return res.status(201).json({ user: "Criado com sucesso" });
     } catch (error) {
-      return res.status(500).json({ err: "Something went wrong." });
+      return res.status(500).json({
+        message: "Internal server error",
+      });
     }
   },
 
@@ -79,26 +69,29 @@ export default {
       if (!user) return res.status(400).json({ msg: "User does not exist." });
 
       const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) return res.status(400).json({ msg: "Incorrect password." });
+      if (isMatch) {
+        const accessToken = jwt.sign(
+          { _id: user._id, name: user.name, role: user.role },
+          process.env.ACCESS_TOKEN_SECRET as Secret,
+          {
+            expiresIn: "15m",
+          }
+        );
+        const refreshToken = jwt.sign(
+          { _id: user._id, name: user.name, role: user.role },
+          process.env.REFRESH_TOKEN_SECRET as Secret
+        );
 
-      const accesstoken = createAccessToken({ id: user._id });
-      const refreshtoken = createRefreshToken({ id: user._id });
+        refreshTokens.push(refreshToken);
 
-      res.cookie("refreshtoken", refreshtoken, {
-        httpOnly: true,
-        path: "/user/refresh_token",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7d
-      });
-
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        contactNumber: user.contactNumber,
-        profilePicture: user.profilePicture,
-        accesstoken,
-      });
+        return res.status(200).json({
+          user,
+          accessToken,
+          refreshToken,
+          msg: "Logged in successfully",
+        });
+      }
+      return res.status(400).json({ msg: "Incorrect password." });
     } catch (err) {
       return res.status(500).json({ err: "Error refresh token" });
     }
@@ -106,7 +99,7 @@ export default {
 
   logout: async (req: Request, res: Response) => {
     try {
-      res.clearCookie("refreshtoken", { path: "/user/refresh_token" });
+      res.clearCookie("refreshToken", { path: "/user/refresh_token" });
       return res.json({ msg: "Logged out" });
     } catch (err) {
       return res.status(500).json({ err: "Error logout" });
@@ -114,22 +107,22 @@ export default {
   },
 
   refreshToken: async (req: Request, res: Response, next: NextFunction) => {
-    const refreshtoken = req.cookies.refreshtoken;
-
-    if (!refreshtoken) return res.status(401).json({ msg: "No refresh token" });
-
-    let payload: any = null;
     try {
-      payload = jwt.verify(
-        refreshtoken,
+      const refreshToken = req.cookies.refreshToken;
+
+      if (!refreshToken)
+        return res.status(401).json({ msg: "No refresh token" });
+
+      jwt.verify(
+        refreshToken,
         process.env.REFRESH_TOKEN_SECRET as Secret,
         (err: any, user: any) => {
           if (err)
             return res.status(401).json({ msg: "Invalid refresh token" });
 
-          const accesstoken = createAccessToken({ id: user._id });
+          const accessToken = createAccessToken({ id: user._id });
 
-          res.json({ accesstoken });
+          res.json({ accessToken });
           res.status(200).json({ msg: "Refresh válido" });
           return next();
         }
