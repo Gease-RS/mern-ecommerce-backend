@@ -15,9 +15,15 @@ const auth = (req: Request, res: Response, next: NextFunction) => {
       process.env.ACCESS_TOKEN_SECRET as jwt.Secret,
       (err: any, user: any) => {
         if (err) return res.status(401).json({ msg: "Invalid token" });
+
+        // @ts-ignore
+        req.user = user;
+        next();
       }
     );
   } catch (err) {
     return res.status(401).json({ msg: "Invalid token" });
   }
 };
+
+export default auth;

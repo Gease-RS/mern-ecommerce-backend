@@ -1,6 +1,5 @@
 import * as dotenv from "dotenv";
 import e, { Request, Response, NextFunction } from "express";
-import mongoose from "mongoose";
 import jwt, { Secret } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import User from "../model";
@@ -47,6 +46,14 @@ export default {
       user.save().then((result) => {
         const accessToken = createAccessToken({ id: user._id });
         const refreshToken = createRefreshToken({ id: user._id });
+
+        res
+          .cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            path: "/refresh_token",
+          })
+          .json({ accessToken });
+
         refreshTokens.push(refreshToken);
         return res.status(200).json({
           message: "User created successfully",
@@ -82,6 +89,13 @@ export default {
           process.env.REFRESH_TOKEN_SECRET as Secret
         );
 
+        res
+          .cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            path: "/refresh_token",
+          })
+          .json({ accessToken });
+
         refreshTokens.push(refreshToken);
 
         return res.status(200).json({
@@ -111,14 +125,16 @@ export default {
       const refreshToken = req.cookies.refreshToken;
 
       if (!refreshToken)
-        return res.status(401).json({ msg: "No refresh token" });
+        return res.status(401).json({ msg: "Please Login or Register" });
 
       jwt.verify(
         refreshToken,
         process.env.REFRESH_TOKEN_SECRET as Secret,
         (err: any, user: any) => {
           if (err)
-            return res.status(401).json({ msg: "Invalid refresh token" });
+            return res
+              .status(401)
+              .json({ msg: "Invalid Access, please Login or Register" });
 
           const accessToken = createAccessToken({ id: user._id });
 
@@ -142,12 +158,13 @@ export default {
   },
 
   getUser: async (req: Request, res: Response) => {
-    const { _id } = req.params;
+    const id = req.params._id;
     try {
-      const user = await User.findById(_id);
-      return res.json({ user });
+      const user = await User.findById(id).select("-password");
+      if (!user) return res.status(400).json({ msg: "User does not exist." });
+      res.json(user);
     } catch (err) {
-      return res.status(500).json("Error get user");
+      return res.status(500).json({ err: "Error get user" });
     }
   },
 
