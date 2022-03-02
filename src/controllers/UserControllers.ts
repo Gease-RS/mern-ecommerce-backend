@@ -1,9 +1,8 @@
 import * as dotenv from "dotenv";
-import e, { Request, Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
 import jwt, { Secret } from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import User from "../model";
-import { IUser } from "../interfaces/IUser";
+import User, { IUser } from "../model/userModel";
 import { createAccessToken, createRefreshToken } from "../auth/authToken";
 
 dotenv.config();

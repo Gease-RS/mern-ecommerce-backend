@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import { connect, connection } from "mongoose";
 import cors from "cors";
 import config from "./config";
-import router from "./routes";
+import router from "./routes/userRouter";
 
 const app = express();
 app.use(express.json());
