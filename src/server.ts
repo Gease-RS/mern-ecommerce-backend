@@ -4,13 +4,15 @@ import cookieParser from "cookie-parser";
 import { connect, connection } from "mongoose";
 import cors from "cors";
 import config from "./config";
-import router from "./routes/userRouter";
+import routerRouter from "./routes/userRouter";
+import routerCategory from "./routes/categoryRouter";
 
 const app = express();
 app.use(express.json());
 app.use(cookieParser(""));
 app.use(cors());
-app.use(router);
+app.use(routerRouter);
+app.use(routerCategory);
 app.use((error: Error, req: Request, res: Response, next: NextFunction) => {
   return res.json({
     message: error.message,

@@ -12,4 +12,7 @@ router.get("/api/users", auth, UserControllers.listUsers);
 router.get("/api/user/:_id", UserControllers.getUser);
 router.put("/api/user/:_id", UserControllers.updateUser);
 router.delete("/api/user/:_id", UserControllers.deleteUser);
-export default router;
+
+const routerUser = router;
+
+export default routerUser;
